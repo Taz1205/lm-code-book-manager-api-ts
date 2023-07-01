@@ -22,3 +22,10 @@ export const updateBook = async (bookId: number, book: Book) => {
 		},
 	});
 };
+// User Story 5 - Delete Book By Id Solution
+export const deleteBook = async (bookId: number): Promise<number> => {
+	// delete the book and return the number of records deleted
+	// for example:
+	const deleteCount = await Book.destroy({ where: { bookId: bookId } });
+	return deleteCount;
+};
