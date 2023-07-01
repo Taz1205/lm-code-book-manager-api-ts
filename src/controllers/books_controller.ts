@@ -7,15 +7,16 @@ export const getBooks = async (req: Request, res: Response) => {
 };
 
 export const getBook = async (req: Request, res: Response) => {
-	const bookId = req.params.bookId;
-	const book = await bookService.getBook(Number(bookId));
-
-	if (book) {
-		res.json(book).status(200);
-	} else {
-		res.status(404).json("Not found");
-	}
+    const bookId = req.params.bookId;
+    try {
+        const book = await bookService.getBook(Number(bookId));
+        res.json(book).status(200);
+    } catch (error) {
+        res.status(404).json({ message: (error as Error).message });
+    }
 };
+
+
 
 export const saveBook = async (req: Request, res: Response) => {
 	const bookToBeSaved = req.body;
@@ -27,6 +28,7 @@ export const saveBook = async (req: Request, res: Response) => {
 	}
 };
 
+
 // User Story 4 - Update Book By Id Solution
 export const updateBook = async (req: Request, res: Response) => {
 	const bookUpdateData = req.body;
@@ -34,4 +36,23 @@ export const updateBook = async (req: Request, res: Response) => {
 
 	const book = await bookService.updateBook(bookId, bookUpdateData);
 	res.status(204).json(book);
+};
+// User Story 5 - Delete Book By Id Solution
+export const deleteBook = async (req: Request, res: Response) => {
+	const bookId = Number.parseInt(req.params.bookId);
+
+	try {
+		const deleteCount = await bookService.deleteBook(bookId);
+		if (deleteCount > 0) {
+			res
+				.status(204)
+				.json({ message: `Book with ID ${bookId} deleted successfully.` });
+		} else {
+			res
+				.status(404)
+				.json({ message: `Book with ID ${bookId} does not exist.` });
+		}
+	} catch (error) {
+		res.status(500).json({ message: (error as Error).message });
+	}
 };

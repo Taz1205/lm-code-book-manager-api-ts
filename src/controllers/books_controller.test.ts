@@ -50,7 +50,7 @@ describe("GET /api/v1/books endpoint", () => {
 
 		// NB the cast to `Book[]` takes care of all the missing properties added by sequelize
 		//    such as createdDate etc, that we don't care about for the purposes of this test
-		jest
+		const mockGetBook = jest
 			.spyOn(bookService, "getBooks")
 			.mockResolvedValue(dummyBookData as Book[]);
 
@@ -60,6 +60,8 @@ describe("GET /api/v1/books endpoint", () => {
 		// Assert
 		expect(res.body).toEqual(dummyBookData);
 		expect(res.body.length).toEqual(2);
+		expect(mockGetBook).toHaveBeenCalledTimes(1);
+		expect(mockGetBook).toHaveBeenCalledWith();
 	});
 });
 
@@ -78,20 +80,18 @@ describe("GET /api/v1/books/{bookId} endpoint", () => {
 	});
 
 	test("status code successfully 404 for a book that is not found", async () => {
-		// Arrange
+    // Arrange
+    jest
+        .spyOn(bookService, "getBook")
+        .mockRejectedValue(new Error("Book not found"));
 
-		jest
-			.spyOn(bookService, "getBook")
-			// this is a weird looking type assertion!
-			// it's necessary because TS knows we can't actually return unknown here
-			// BUT we want to check that in the event a book is missing we return a 404
-			.mockResolvedValue(undefined as unknown as Book);
-		// Act
-		const res = await request(app).get("/api/v1/books/77");
+    // Act
+    const res = await request(app).get("/api/v1/books/77");
 
-		// Assert
-		expect(res.statusCode).toEqual(404);
-	});
+    // Assert
+    expect(res.statusCode).toEqual(404);
+});
+
 
 	test("controller successfully returns book object as JSON", async () => {
 		// Arrange
@@ -131,5 +131,66 @@ describe("POST /api/v1/books endpoint", () => {
 
 		// Assert
 		expect(res.statusCode).toEqual(400);
+	});
+	describe("POST /api/v1/books endpoint", () => {
+	
+		test("status code 400 for book with existing ID", async () => {
+			// Arrange
+			const newBook = { 
+				bookId: 1, 
+				title: "Harry Potter and the Half-blood Prince", 
+				author: "J K Rowling" 
+			};
+			jest.spyOn(bookService, "saveBook").mockImplementation(() => {
+				throw new Error("Book ID already exists");
+			});
+	
+			// Act
+			const res = await request(app)
+				.post("/api/v1/books")
+				.send(newBook);
+	
+			// Assert
+			expect(res.statusCode).toEqual(400);
+			expect(res.body).toEqual({ message: "Book ID already exists" });
+		});
+	});
+	
+});
+describe("DELETE /api/v1/books endpoint", () => {
+	test("status code successfully 204 for deleting an existing book", async () => {
+		jest.spyOn(bookService, "deleteBook").mockResolvedValue(1);
+		const res = await request(app).delete("/api/v1/books/1");
+		expect(res.statusCode).toEqual(204);
+	});
+
+	test("status code successfully 204 for deleting an existing book", async () => {
+		jest
+			.spyOn(bookService, "getBook")
+			.mockResolvedValue(dummyBookData[0] as Book);
+		jest.spyOn(bookService, "deleteBook");
+		const res = await request(app).delete("/api/v1/books/1");
+		expect(res.statusCode).toEqual(204);
+	});
+
+	test("status code 500 for internal server error", async () => {
+		jest
+			.spyOn(bookService, "deleteBook")
+			.mockRejectedValue(new Error("Server error"));
+		const res = await request(app).delete("/api/v1/books/1");
+		expect(res.statusCode).toEqual(500);
+	});
+
+	test("status code 404 for deleting a non-existing book", async () => {
+		jest.spyOn(bookService, "deleteBook").mockResolvedValue(0); // Mock the deleteBook function to return 0, indicating no rows were deleted
+		const res = await request(app).delete("/api/v1/books/99"); // Assuming 99 is a non-existent bookId
+		expect(res.statusCode).toEqual(404);
+	});
+	test("status code 404 for deleting a non-existing book", async () => {
+		jest
+			.spyOn(bookService, "getBook")
+			.mockResolvedValue(undefined as unknown as Book);
+		const res = await request(app).delete("/api/v1/books/99"); // Assuming 99 is a non-existent bookId
+		expect(res.statusCode).toEqual(404);
 	});
 });
